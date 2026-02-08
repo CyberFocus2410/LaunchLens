@@ -1,0 +1,5 @@
+{
+  "name": "LaunchLens",
+  "description": "An AI-powered automated auditor that analyzes web apps to generate functional test cases, security risk scorecards, and professional demo scripts.",
+  "requestFramePermissions": []
+}
