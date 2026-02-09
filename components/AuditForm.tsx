@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { AuditRequest, AudienceType } from '../types';
-import { Search, Loader2, AlertCircle } from 'lucide-react';
+import { AuditRequest, AudienceType, ScanMode } from '../types';
+import { Search, Loader2, AlertCircle, Shield, Zap } from 'lucide-react';
 
 interface AuditFormProps {
   onSubmit: (data: AuditRequest) => void;
@@ -18,6 +18,7 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
   const [description, setDescription] = useState('');
   const [testCreds, setTestCreds] = useState('');
   const [audience, setAudience] = useState<AudienceType>(AudienceType.Developer);
+  const [scanMode, setScanMode] = useState<ScanMode>(ScanMode.Full);
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -28,6 +29,23 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
       if (!['http:', 'https:'].includes(urlObj.protocol)) {
         return 'URL must start with http:// or https://';
       }
+      
+      const hostname = urlObj.hostname;
+      // Strict Blocklist for Internal IPs
+      const isPrivate = 
+        hostname === 'localhost' ||
+        hostname.startsWith('127.') ||
+        hostname.startsWith('169.254.') ||
+        hostname.startsWith('10.') ||
+        hostname.startsWith('192.168.') ||
+        (hostname.startsWith('172.') && parseInt(hostname.split('.')[1], 10) >= 16 && parseInt(hostname.split('.')[1], 10) <= 31) ||
+        hostname.endsWith('.local') ||
+        hostname.endsWith('.internal');
+
+      if (isPrivate) {
+        return 'Internal/Private IP ranges are blocked for security.';
+      }
+
     } catch {
       return 'Please enter a valid URL (e.g., https://example.com)';
     }
@@ -64,7 +82,7 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
     e.preventDefault();
     
     // Sanitize inputs
-    const safeUrl = url.trim(); // URLs shouldn't have HTML tags anyway, but trim is key
+    const safeUrl = url.trim(); 
     const safeDesc = sanitizeInput(description);
     const safeCreds = sanitizeInput(testCreds);
 
@@ -83,14 +101,14 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
     }
 
     // Submit the sanitized values
-    onSubmit({ url: safeUrl, description: safeDesc, testCreds: safeCreds, audience });
+    onSubmit({ url: safeUrl, description: safeDesc, testCreds: safeCreds, audience, scanMode });
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-surface border border-gray-700 rounded-xl p-8 shadow-2xl">
+    <div className="w-full max-w-2xl mx-auto bg-surface border border-gray-700 rounded-xl p-8 shadow-2xl animate-fade-in">
       <div className="mb-6 text-center">
-        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">App Auditor <span className="text-primary">AI</span></h2>
-        <p className="text-gray-400">Enter your app details for a comprehensive security, QA, and demo analysis.</p>
+        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">LaunchLens <span className="text-primary">Auditor</span></h2>
+        <p className="text-gray-400">Enter your web app details for a comprehensive security, QA, and demo analysis.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -119,6 +137,39 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
                 <span>{errors.url}</span>
               </div>
             )}
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Target must be publicly accessible. Internal IPs are blocked.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">Scan Mode</label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setScanMode(ScanMode.Full)}
+              className={`relative flex flex-col items-center p-4 border rounded-xl transition-all ${
+                scanMode === ScanMode.Full 
+                  ? 'bg-primary/10 border-primary text-white ring-1 ring-primary' 
+                  : 'bg-gray-900/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+              }`}
+            >
+              <Zap className={`w-6 h-6 mb-2 ${scanMode === ScanMode.Full ? 'text-primary' : 'text-gray-500'}`} />
+              <span className="font-semibold text-sm">Deep Scan</span>
+              <span className="text-xs text-center mt-1 opacity-70">Crawling, Fuzzing & Container Isolation</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScanMode(ScanMode.Safe)}
+              className={`relative flex flex-col items-center p-4 border rounded-xl transition-all ${
+                scanMode === ScanMode.Safe 
+                  ? 'bg-green-500/10 border-green-500 text-white ring-1 ring-green-500' 
+                  : 'bg-gray-900/50 border-gray-700 text-gray-400 hover:bg-gray-800'
+              }`}
+            >
+              <Shield className={`w-6 h-6 mb-2 ${scanMode === ScanMode.Safe ? 'text-green-500' : 'text-gray-500'}`} />
+              <span className="font-semibold text-sm">Quick Scan</span>
+              <span className="text-xs text-center mt-1 opacity-70">Headers & SSL Only (Passive)</span>
+            </button>
           </div>
         </div>
 
@@ -200,7 +251,7 @@ const AuditForm: React.FC<AuditFormProps> = ({ onSubmit, isLoading }) => {
           {isLoading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Analyzing Application...
+              Initializing Job Queue...
             </>
           ) : (
             <>

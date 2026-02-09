@@ -12,10 +12,16 @@ export enum AudienceType {
   Judge = 'judge'
 }
 
+export enum ScanMode {
+  Full = 'full',
+  Safe = 'safe'
+}
+
 export interface SecurityIssue {
   issue: string;
   severity: Severity;
   mitigation: string;
+  codeSnippet?: string;
 }
 
 export interface Scorecard {
@@ -36,6 +42,23 @@ export interface DemoPlan {
   avoid: string;
 }
 
+export interface FailedTest {
+  scenario: string;
+  curlCommand: string;
+}
+
+export interface AttackSurfaceNode {
+  id: string;
+  label: string;
+  type: 'root' | 'route' | 'api' | 'external' | 'database';
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+export interface AttackSurfaceEdge {
+  source: string;
+  target: string;
+}
+
 export interface AuditReport {
   appOverview: {
     purpose: string;
@@ -44,11 +67,15 @@ export interface AuditReport {
   };
   functionalTests: {
     passed: string[];
-    failed: string[];
+    failed: FailedTest[];
     risky: string[];
     suggested: string[];
   };
   securityAnalysis: SecurityIssue[];
+  attackSurface: {
+    nodes: AttackSurfaceNode[];
+    edges: AttackSurfaceEdge[];
+  };
   scorecard: Scorecard;
   improvements: {
     technical: string[];
@@ -65,4 +92,5 @@ export interface AuditRequest {
   description: string;
   testCreds?: string;
   audience: AudienceType;
+  scanMode: ScanMode;
 }
